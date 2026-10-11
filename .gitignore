@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.deployer
+*.db
+*.db-journal
+.DS_Store
+*.log
+.vite/
+*.tsbuildinfo
+mcp-stdout.txt
+mcp-stderr.txt
