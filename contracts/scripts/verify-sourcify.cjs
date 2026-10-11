@@ -2,7 +2,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const network = process.argv[2] || "arbitrumSepolia";
+const network = process.argv[2] || "monadTestnet";
 const deployment = require(path.resolve(__dirname, `../deployments/${network}.json`));
 const contractIdentifier = "contracts/AgentSpendPolicy.sol:AgentSpendPolicy";
 

@@ -1,0 +1,9 @@
+{
+  "network": "monadTestnet",
+  "chainId": 10143,
+  "AgentSpendPolicy": "0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c",
+  "token": "0x534b2f3A21130d7a60830c2Df862319e593943A3",
+  "deployer": "0x90E289d524610802cC9468A37B34f8597Eaca901",
+  "deployedAt": "2026-10-11T18:10:51.547Z",
+  "txHash": "0xe4e79adb0da2205cac9c53ab9724acda2cbd125e4ac4cd9c16a65fe44fee9bcf"
+}

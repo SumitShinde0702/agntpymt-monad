@@ -18,6 +18,11 @@ const config: HardhatUserConfig = {
     hardhat: {
       chainId: Number(process.env.HARDHAT_CHAIN_ID || 31337),
     },
+    monadTestnet: {
+      url: process.env.MONAD_TESTNET_RPC_URL || "https://testnet-rpc.monad.xyz",
+      chainId: 10143,
+      accounts,
+    },
     arbitrumSepolia: {
       url: process.env.ARBITRUM_SEPOLIA_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc",
       chainId: 421614,

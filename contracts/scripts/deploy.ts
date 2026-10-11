@@ -3,6 +3,7 @@ import path from "node:path";
 import { ethers, network } from "hardhat";
 
 const USDC_BY_CHAIN: Record<string, string> = {
+  "10143": "0x534b2f3A21130d7a60830c2Df862319e593943A3",
   "421614": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
   "84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
 };

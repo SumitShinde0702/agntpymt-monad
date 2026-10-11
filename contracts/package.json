@@ -8,6 +8,7 @@
     "coverage": "hardhat coverage",
     "export-abi": "hardhat compile && node scripts/export-abi.cjs",
     "verify:sourcify": "node scripts/verify-sourcify.cjs",
+    "deploy:monad-testnet": "hardhat run scripts/deploy.ts --network monadTestnet",
     "deploy:arbitrum-sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
     "deploy:base-sepolia": "hardhat run scripts/deploy.ts --network baseSepolia",
     "deploy:robinhood-testnet": "hardhat run scripts/deploy.ts --network robinhoodTestnet"
