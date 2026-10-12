@@ -1,7 +1,7 @@
 import { Copy, Bot } from "lucide-react";
 import type { AgentWalletRow } from "../../lib/api";
 import { AgentWalletFund } from "./AgentWalletFund";
-import { DISPLAY_CHAIN } from "../../lib/chains";
+import { ACTIVE_CHAIN, DISPLAY_CHAIN } from "../../lib/chains";
 
 const colorMap: Record<string, string> = {
   violet: "bg-slate-100 text-accent-navy",
@@ -35,7 +35,7 @@ export function AgentWalletsTable({ agents, treasuryAddress, onFunded }: Props) 
             <tr>
               <th className="px-5 py-3 font-medium">Agent</th>
               <th className="px-5 py-3 font-medium">Wallet address</th>
-              <th className="px-5 py-3 font-medium">ETH</th>
+              <th className="px-5 py-3 font-medium">{DISPLAY_CHAIN.gasToken}</th>
               <th className="px-5 py-3 font-medium">USDC</th>
               <th className="px-5 py-3 font-medium">Fund from treasury</th>
             </tr>
@@ -77,8 +77,8 @@ export function AgentWalletsTable({ agents, treasuryAddress, onFunded }: Props) 
                 </td>
                 <td className="px-5 py-4 font-medium">
                   {a.onChain.eth.toFixed(4)}
-                  {a.onChain.eth < 0.00005 && a.walletAddress && (
-                    <div className="text-xs text-amber-600">Use ETH gas button →</div>
+                  {a.onChain.eth < ACTIVE_CHAIN.minGas && a.walletAddress && (
+                    <div className="text-xs text-amber-600">Use {DISPLAY_CHAIN.gasToken} gas button →</div>
                   )}
                 </td>
                 <td className="px-5 py-4 font-medium">{a.onChain.usdc.toFixed(2)}</td>

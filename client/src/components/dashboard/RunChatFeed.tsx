@@ -15,6 +15,7 @@ import type { RunEvent } from "../../lib/api";
 import { txExplorerUrl } from "../../lib/explorer";
 import { DISPLAY_CHAIN } from "../../lib/chains";
 import { ChatMarkdown } from "./ChatMarkdown";
+import { RiskBadge, isRiskTier } from "./RiskBadge";
 
 type ChatRole = "buyer" | "seller" | "system" | "hermes_tool";
 type ToolPhase = "calling" | "completed" | "failed";
@@ -28,6 +29,8 @@ const STEP_LABELS: Record<string, string> = {
   negotiation_round: "Negotiation",
   deal_accepted: "Deal agreed",
   policy_evaluated: "Policy check",
+  risk_checked: "Seller risk check",
+  risk_denied: "Denied: risky seller",
   payment_simulated: "Payment",
   payment_settled: "Payment sent",
   payment_failed: "Payment failed",
@@ -144,6 +147,7 @@ function collapseToolEvents(events: RunEvent[]): RunEvent[] {
 
 function classifyEvent(event: RunEvent, agentName?: string): ChatRole {
   if (event.step === "hermes_tool") return "hermes_tool";
+  if (event.step === "risk_checked") return "system";
   const actor = event.actor ?? "";
   if (event.step === "user_message" || actor === "You") return "buyer";
   if (actor === agentName) return "buyer";
@@ -167,6 +171,7 @@ function isFailureStep(step: string) {
     step === "hermes_approval_denied" ||
     step === "payment_denied" ||
     step === "policy_denied" ||
+    step === "risk_denied" ||
     step === "onchain_policy_denied" ||
     step === "onchain_policy_rejected"
   );
@@ -318,6 +323,12 @@ function ChatBubble({
     typeof event.payload?.approvalId === "string" ? event.payload.approvalId : undefined;
   const txHash = txHashFromEvent(event);
   const isHermesSystem = event.step === "hermes_delegated" || event.actor === "Hermes";
+  const riskTier = event.step === "risk_checked" && isRiskTier(event.payload?.tier) ? event.payload.tier : null;
+  const riskLabels = Array.isArray(event.payload?.labels)
+    ? (event.payload.labels as { label?: unknown }[])
+        .map((l) => (typeof l?.label === "string" ? l.label : null))
+        .filter((l): l is string => l != null)
+    : [];
 
   if (role === "system") {
     return (
@@ -342,10 +353,21 @@ function ChatBubble({
             {isHermesSystem && !failed && !success && <Sparkles className="h-3 w-3 text-violet-600" />}
             {event.step === "policy_evaluated" && <Scale className="h-3 w-3" />}
             {label}
+            {riskTier && <RiskBadge tier={riskTier} />}
           </div>
           <div className="text-left text-sm leading-snug">
             <ChatMarkdown text={event.message} />
           </div>
+          {riskTier && (
+            <div className="mt-1 text-left text-[11px] text-slate-500">
+              {riskLabels.length > 0 && <div>Nansen labels: {riskLabels.slice(0, 5).join(", ")}</div>}
+              <div>
+                {(event.payload?.sources as { nansen?: string } | undefined)?.nansen === "ok"
+                  ? "Screened by Nansen wallet labels and Alchemy on-chain history on Monad"
+                  : "Screened by Alchemy on-chain payment history on Monad"}
+              </div>
+            </div>
+          )}
           {pendingApproval && approvalId && onHermesApproval && (
             <div className="mt-2 flex justify-center gap-2">
               <button

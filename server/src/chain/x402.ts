@@ -8,7 +8,14 @@ import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { ExactEvmScheme as ExactEvmServerScheme } from "@x402/evm/exact/server";
 import { privateKeyToAccount } from "viem/accounts";
 import { env } from "../config.js";
-import { SETTLEMENT_CHAIN_NAME, X402_NETWORK } from "./network.js";
+import {
+  SETTLEMENT_CHAIN_KEY,
+  SETTLEMENT_CHAIN_NAME,
+  SETTLEMENT_GAS_SYMBOL,
+  SETTLEMENT_MIN_GAS,
+  USDC_ADDRESS,
+  X402_NETWORK,
+} from "./network.js";
 import { fetchWalletBalances, gasShortfallMessage } from "./wallet.js";
 
 export { X402_NETWORK };
@@ -126,7 +133,7 @@ async function assertFacilitatorReady(): Promise<void> {
     const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
       `Facilitator at ${env.facilitatorUrl} failed (${detail}). ` +
-        `The facilitator must support ${X402_NETWORK} (${SETTLEMENT_CHAIN_NAME}), e.g. FACILITATOR_URL=https://facilitator.payai.network, or set SIMULATE_PAYMENTS=true`
+        `The facilitator must support ${X402_NETWORK} (${SETTLEMENT_CHAIN_NAME}), e.g. FACILITATOR_URL=https://x402-facilitator.molandak.org for Monad, or set SIMULATE_PAYMENTS=true`
     );
   }
 }
@@ -136,10 +143,19 @@ export async function createX402Middleware(): Promise<RequestHandler> {
   await assertFacilitatorReady();
 
   const facilitatorClient = new HTTPFacilitatorClient({ url: env.facilitatorUrl });
-  const resourceServer = new x402ResourceServer(facilitatorClient).register(
-    X402_NETWORK,
-    new ExactEvmServerScheme()
-  );
+  const scheme = new ExactEvmServerScheme();
+  // Monad testnet USDC is not in @x402/evm's built-in asset table; its EIP-712 domain name is "USDC".
+  if (SETTLEMENT_CHAIN_KEY === "monadTestnet") {
+    scheme.registerMoneyParser(async (amount, network) => {
+      if (network !== X402_NETWORK) return null;
+      return {
+        amount: String(Math.floor(amount * 1_000_000)),
+        asset: USDC_ADDRESS,
+        extra: { name: "USDC", version: "2" },
+      };
+    });
+  }
+  const resourceServer = new x402ResourceServer(facilitatorClient).register(X402_NETWORK, scheme);
 
   return paymentMiddleware(
     {
@@ -158,8 +174,6 @@ export async function createX402Middleware(): Promise<RequestHandler> {
   );
 }
 
-const MIN_GAS_ETH = 0.00005;
-
 export async function settleViaX402(
   privateKey: `0x${string}`,
   sessionId: string,
@@ -168,7 +182,7 @@ export async function settleViaX402(
   const account = privateKeyToAccount(privateKey);
   const balances = await fetchWalletBalances(account.address);
 
-  if (balances.eth < MIN_GAS_ETH) {
+  if (balances.eth < SETTLEMENT_MIN_GAS) {
     throw new Error(gasShortfallMessage(account.address, balances.eth));
   }
 
@@ -202,7 +216,7 @@ export async function settleViaX402(
       const body = await response.text();
       let detail = formatX402Failure(response.status, body, response.headers);
       if (response.status === 402) {
-        detail += ` Agent wallet ${account.address} has ${balances.usdc.toFixed(4)} USDC and ${balances.eth.toFixed(6)} ETH on ${SETTLEMENT_CHAIN_NAME} — fund both on the Wallets page if low.`;
+        detail += ` Agent wallet ${account.address} has ${balances.usdc.toFixed(4)} USDC and ${balances.eth.toFixed(6)} ${SETTLEMENT_GAS_SYMBOL} on ${SETTLEMENT_CHAIN_NAME} — fund both on the Wallets page if low.`;
       }
       throw new Error(detail);
     }

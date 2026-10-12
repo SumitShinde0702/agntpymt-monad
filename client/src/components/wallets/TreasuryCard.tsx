@@ -67,7 +67,7 @@ export function TreasuryCard({ treasury, onUpdate }: Props) {
           <div className="mt-1 break-all font-mono text-sm text-slate-800">{treasury.address}</div>
           <div className="mt-3 flex gap-6 text-sm">
             <span>
-              <span className="text-slate-500">ETH </span>
+              <span className="text-slate-500">{DISPLAY_CHAIN.gasToken} </span>
               <span className="font-semibold">
                 {ethBalance ? Number(ethBalance.formatted).toFixed(4) : (treasury.balances?.eth.toFixed(4) ?? "…")}
               </span>

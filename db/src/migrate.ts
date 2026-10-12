@@ -147,6 +147,9 @@ ALTER TABLE agent_policies ADD COLUMN IF NOT EXISTS daily_aggregate_cap_usd DOUB
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS spend_policy_bound BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE seller_sessions ADD COLUMN IF NOT EXISTS policy_request_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS policy_tx_hash TEXT;
+
+ALTER TABLE approvals ADD COLUMN IF NOT EXISTS risk_tier TEXT;
+ALTER TABLE approvals ADD COLUMN IF NOT EXISTS risk_summary TEXT;
 `;
 
 await sql.unsafe(alterSql);

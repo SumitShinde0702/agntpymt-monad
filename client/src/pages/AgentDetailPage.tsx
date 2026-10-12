@@ -215,7 +215,7 @@ export function AgentDetailPage() {
               <div className="text-xl font-bold">{agent.onChain.usdc.toFixed(2)}</div>
             </div>
             <div className="rounded-xl bg-slate-50 px-4 py-2 text-center">
-              <div className="text-xs text-slate-500">ETH</div>
+              <div className="text-xs text-slate-500">{DISPLAY_CHAIN.gasToken}</div>
               <div className="text-xl font-bold">{agent.onChain.eth.toFixed(4)}</div>
             </div>
           </div>

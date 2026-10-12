@@ -19,12 +19,18 @@ if (clerkSecretKey && !process.env.CLERK_SECRET_KEY) {
   process.env.CLERK_SECRET_KEY = clerkSecretKey;
 }
 
+function privateKeyEnv(name: string): `0x${string}` | "" {
+  const value = (process.env[name] ?? "").trim();
+  if (!value) return "";
+  return (value.startsWith("0x") ? value : `0x${value}`) as `0x${string}`;
+}
+
 export const env = {
   port: Number(process.env.PORT ?? 3001),
   simulatePayments: process.env.SIMULATE_PAYMENTS !== "false",
   demoTransactionFeeUsd: Number(process.env.DEMO_TRANSACTION_FEE_USD ?? 0.01),
   evmPayToAddress: process.env.EVM_PAY_TO_ADDRESS ?? "",
-  facilitatorUrl: process.env.FACILITATOR_URL ?? "https://facilitator.payai.network",
+  facilitatorUrl: process.env.FACILITATOR_URL ?? "https://x402-facilitator.molandak.org",
   /** When false, runs use the built-in LLM negotiation runner and Hermes is never contacted. */
   hermesEnabled: process.env.HERMES_ENABLED === "true",
   hermesApiUrl: process.env.HERMES_API_URL ?? "http://localhost:8642",
@@ -35,15 +41,20 @@ export const env = {
   agntpymtPublicUrl: process.env.AGNTPYMT_PUBLIC_URL ?? "",
   mcpServiceKey: process.env.AGNTPYMT_MCP_KEY ?? "dev-mcp-key",
   /** Optional — auto-submit ERC-8004 vendor feedback after x402 settlement (must match EVM_PAY_TO_ADDRESS). */
-  vendorWalletPrivateKey: (process.env.VENDOR_WALLET_PRIVATE_KEY ?? "") as `0x${string}` | "",
+  vendorWalletPrivateKey: privateKeyEnv("VENDOR_WALLET_PRIVATE_KEY"),
   clerkSecretKey,
   clerkPublishableKey,
   openaiApiKey: process.env.OPENAI_API_KEY ?? "",
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+  /** Seller risk check: Nansen wallet labels, only called when NANSEN_ENABLED=true (each lookup costs credits). */
+  nansenEnabled: process.env.NANSEN_ENABLED === "true",
+  nansenApiKey: process.env.NANSEN_API_KEY ?? "",
+  /** Alchemy: Monad testnet RPC and Transfers API for seller on-chain history. */
+  alchemyApiKey: process.env.ALCHEMY_API_KEY ?? "",
   /** AgentSpendPolicy contract on the active SETTLEMENT_CHAIN; on-chain governance is skipped when unset. */
   spendPolicyAddress: process.env.SPEND_POLICY_ADDRESS ?? "",
   /** Policy admin + operator; pays gas for bind/request/approve/settle records. */
-  spendPolicyAdminKey: (process.env.SPEND_POLICY_ADMIN_PRIVATE_KEY ?? "") as `0x${string}` | "",
+  spendPolicyAdminKey: privateKeyEnv("SPEND_POLICY_ADMIN_PRIVATE_KEY"),
   /** Hard on-chain daily ceiling when an agent has no daily cap (USD). */
   spendPolicyDefaultDailyUsd: Number(process.env.SPEND_POLICY_DEFAULT_DAILY_USD ?? 100),
   orgId: "org_demo",

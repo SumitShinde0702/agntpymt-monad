@@ -1,6 +1,6 @@
 /**
  * End-to-end check of the server's AgentSpendPolicy integration against a live RPC.
- * Requires SPEND_POLICY_ADDRESS, SPEND_POLICY_ADMIN_PRIVATE_KEY and (optionally) ARBITRUM_SEPOLIA_RPC_URL.
+ * Requires SPEND_POLICY_ADDRESS, SPEND_POLICY_ADMIN_PRIVATE_KEY and (optionally) MONAD_TESTNET_RPC_URL.
  *
  *   npx tsx server/scripts/smoke-spend-policy.ts
  */

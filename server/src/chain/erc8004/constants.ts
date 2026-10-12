@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 import { SETTLEMENT_CHAIN } from "../network.js";
 
-/** ERC-8004 testnet singletons (CREATE2, identical on every testnet incl. Arbitrum Sepolia). */
+/** ERC-8004 testnet singletons (CREATE2, identical on every testnet incl. Monad Testnet). */
 export const ERC8004_IDENTITY_REGISTRY =
   "0x8004A818BFB912233c491871b3d84c89A494BD9e" as const satisfies Address;
 

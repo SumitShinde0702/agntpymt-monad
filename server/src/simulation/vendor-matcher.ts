@@ -6,6 +6,7 @@ const KEYWORDS: Record<string, string[]> = {
   research: ["research", "data", "sector", "market", "report", "premium-data"],
   cloud: ["aws", "cloud", "invoice", "infrastructure", "gcp", "azure"],
   compute: ["compute", "batch", "forecast", "forecasting", "gpu", "premium-compute"],
+  leads: ["leads", "lead list", "contacts", "contact list", "prospects", "freshleads"],
 };
 
 export function matchVendor(

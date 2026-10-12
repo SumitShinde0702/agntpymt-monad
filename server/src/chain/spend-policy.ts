@@ -4,7 +4,6 @@ import {
   createWalletClient,
   decodeEventLog,
   getAddress,
-  http,
   keccak256,
   stringToHex,
   type Address,
@@ -13,7 +12,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { env } from "../config.js";
-import { SETTLEMENT_CHAIN, SETTLEMENT_RPC_URL, txExplorerUrl } from "./network.js";
+import { SETTLEMENT_CHAIN, settlementTransport, txExplorerUrl } from "./network.js";
 import { agentSpendPolicyAbi } from "./spend-policy-abi.js";
 import { publicClient, usdToUsdcUnits } from "./wallet.js";
 
@@ -73,7 +72,7 @@ const adminWallet = adminAccount
   ? createWalletClient({
       account: adminAccount,
       chain: SETTLEMENT_CHAIN,
-      transport: http(SETTLEMENT_RPC_URL, { timeout: 30_000 }),
+      transport: settlementTransport(30_000),
     })
   : null;
 

@@ -213,6 +213,8 @@ export type Approval = {
   kind?: string;
   toolName?: string | null;
   hermesRunId?: string | null;
+  riskTier?: string | null;
+  riskSummary?: string | null;
   requestedAt: string;
 };
 

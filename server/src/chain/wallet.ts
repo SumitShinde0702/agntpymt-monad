@@ -1,11 +1,13 @@
-import { createPublicClient, createWalletClient, formatUnits, http, parseUnits, type Address, type Hash } from "viem";
+import { createPublicClient, createWalletClient, formatUnits, parseUnits, type Address, type Hash } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import {
   SETTLEMENT_CHAIN,
   SETTLEMENT_CHAIN_NAME,
   SETTLEMENT_FAUCET_URL,
-  SETTLEMENT_RPC_URL,
+  SETTLEMENT_GAS_SYMBOL,
+  SETTLEMENT_MIN_GAS,
   USDC_ADDRESS,
+  settlementTransport,
 } from "./network.js";
 
 const erc20Abi = [
@@ -30,13 +32,13 @@ const erc20Abi = [
 
 export const publicClient = createPublicClient({
   chain: SETTLEMENT_CHAIN,
-  transport: http(SETTLEMENT_RPC_URL, { timeout: 15_000 }),
+  transport: settlementTransport(15_000),
 });
 
 export function gasShortfallMessage(address: string, ethBalance: number): string {
   return (
-    `Agent wallet ${address} needs free ${SETTLEMENT_CHAIN_NAME} ETH for gas (has ${ethBalance.toFixed(6)} ETH). ` +
-    `Open Wallets → fund treasury from a ${SETTLEMENT_CHAIN_NAME} faucet (${SETTLEMENT_FAUCET_URL}, no mainnet ETH), then click ETH gas.`
+    `Agent wallet ${address} needs free ${SETTLEMENT_CHAIN_NAME} ${SETTLEMENT_GAS_SYMBOL} for gas (has ${ethBalance.toFixed(6)} ${SETTLEMENT_GAS_SYMBOL}). ` +
+    `Open Wallets → fund treasury from a ${SETTLEMENT_CHAIN_NAME} faucet (${SETTLEMENT_FAUCET_URL}, no mainnet funds), then click ${SETTLEMENT_GAS_SYMBOL} gas.`
   );
 }
 
@@ -74,8 +76,6 @@ export async function fetchWalletBalances(address: string) {
   }
 }
 
-const MIN_GAS_ETH = 0.00005;
-
 export async function transferUsdcFromAgentWallet(
   privateKey: `0x${string}`,
   to: Address,
@@ -84,7 +84,7 @@ export async function transferUsdcFromAgentWallet(
   const account = privateKeyToAccount(privateKey);
   const balances = await fetchWalletBalances(account.address);
 
-  if (balances.eth < MIN_GAS_ETH) {
+  if (balances.eth < SETTLEMENT_MIN_GAS) {
     throw new Error(gasShortfallMessage(account.address, balances.eth));
   }
 
@@ -98,7 +98,7 @@ export async function transferUsdcFromAgentWallet(
   const walletClient = createWalletClient({
     account,
     chain: SETTLEMENT_CHAIN,
-    transport: http(SETTLEMENT_RPC_URL, { timeout: 15_000 }),
+    transport: settlementTransport(15_000),
   });
 
   const hash = await walletClient.writeContract({

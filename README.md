@@ -7,6 +7,7 @@
 </a>
 
 <p>
+  <a href="https://testnet.monadexplorer.com/address/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c"><img src="https://img.shields.io/badge/Monad_Testnet-USDC_settlement_%2B_audit-836EF9?style=for-the-badge&logo=ethereum&logoColor=white" alt="USDC settlement and audit anchor on Monad testnet" /></a>
   <a href="https://sepolia.arbiscan.io/address/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c"><img src="https://img.shields.io/badge/Arbitrum_Sepolia-USDC_settlement_%2B_audit-12AAFF?style=for-the-badge&logo=ethereum&logoColor=white" alt="USDC settlement and audit anchor on Arbitrum Sepolia" /></a>
   <a href="https://explorer.testnet.chain.robinhood.com/address/0x7F67212561DcD231a9316a54A4A336F7059A4234#code"><img src="https://img.shields.io/badge/Robinhood_Chain-deployed-00C805?style=for-the-badge&logo=robinhood&logoColor=white" alt="Deployed on Robinhood Chain testnet" /></a>
   <a href="https://repo.sourcify.dev/421614/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c"><img src="https://img.shields.io/badge/Source-verified-34D399?style=for-the-badge&logo=checkmarx&logoColor=white" alt="Source verified on Sourcify" /></a>
@@ -71,7 +72,13 @@ It runs on the enterprise's own servers. Policy checks happen in the gateway at 
     </td>
     <td width="50%" valign="top">
       <h3>🧾 Regulator-grade audit</h3>
-      Every decision (authorize, escalate, approve, deny, settle) is logged with the x402 settlement hash. Enterprises that want a tamper-proof public record can anchor it on Arbitrum with <code>AgentSpendPolicy</code>.
+      Every decision (authorize, escalate, approve, deny, settle) is logged with the x402 settlement hash. Enterprises that want a tamper-proof public record can anchor it on Monad with <code>AgentSpendPolicy</code>.
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <h3>🔎 Know who you're paying</h3>
+      Before any money moves, the seller's wallet is screened against its payment history on Monad (<b>Alchemy</b> Transfers API). Brand-new wallets with no history go to a human, with the reason shown on the approval; established wallets, and the org's own configured payout wallet (<code>EVM_PAY_TO_ADDRESS</code>), settle under the normal limits. Optionally, <b>Nansen</b> wallet labels add a deny rule for sellers flagged as exploiters, scammers or sanctioned (<code>NANSEN_ENABLED=true</code>).
     </td>
   </tr>
 </table>
@@ -84,9 +91,19 @@ It runs on the enterprise's own servers. Policy checks happen in the gateway at 
 
 ### ⛓️ Where the chain comes in
 
-- **Settlement:** USDC over x402 on Arbitrum (`eip155:421614`). The gateway is rail-agnostic; more EVM chains and XRPL are on the roadmap.
+- **Settlement:** USDC over x402 on Monad testnet (`eip155:10143`), through Monad's x402 facilitator. The gateway is rail-agnostic: set `SETTLEMENT_CHAIN` to `arbitrumSepolia` or `baseSepolia` to run on those instead.
 - **Identity and reputation:** agents and sellers are registered on the **ERC-8004** registries, and every seller is rated after settlement.
-- **Optional audit anchor:** `AgentSpendPolicy` mirrors the gateway's decisions on-chain (request, approve, settle, cancel) so an auditor can verify the trail on Arbiscan without trusting the enterprise's database. It's deployed and verified on Arbitrum Sepolia and Robinhood Chain testnet.
+- **Optional audit anchor:** `AgentSpendPolicy` mirrors the gateway's decisions on-chain (request, approve, settle, cancel) so an auditor can verify the trail on the Monad explorer without trusting the enterprise's database. It's also deployed and verified on Arbitrum Sepolia and Robinhood Chain testnet.
+
+#### Monad testnet settings
+
+| | |
+| --- | --- |
+| Chain | Monad Testnet, chain ID `10143`, gas token MON ([faucet](https://faucet.monad.xyz)) |
+| RPC | Alchemy `https://monad-testnet.g.alchemy.com/v2/<key>` when `ALCHEMY_API_KEY` is set, otherwise `https://testnet-rpc.monad.xyz` (override either with `MONAD_TESTNET_RPC_URL`) |
+| USDC | `0x534b2f3A21130d7a60830c2Df862319e593943A3` |
+| x402 facilitator | `https://x402-facilitator.molandak.org` (x402 v2, `exact` scheme) |
+| ERC-8004 | Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 
 ## 🔄 How it works
 
@@ -96,20 +113,26 @@ sequenceDiagram
     participant A as 🤖 Agent (any MCP client)
     participant P as 🛡️ AgntPymt gateway (enterprise servers)
     participant H as 🙋 Human approver
+    participant N as 🔎 Alchemy (+ Nansen, optional)
     participant X as 💸 x402 facilitator (USDC)
-    participant C as 📜 AgentSpendPolicy (optional, Arbitrum)
+    participant C as 📜 AgentSpendPolicy (optional, Monad)
     participant R as ⭐ ERC-8004 reputation
 
     A->>P: agntpymt_initiate_purchase("Buy premium sector data")
     P->>P: Kill switch, org ceiling, 24h cap, auto-approve threshold
     P->>P: Negotiate with seller
+    P->>N: Screen seller wallet (labels + on-chain history)
+    N-->>P: Risk tier
+    alt flagged by Nansen (when enabled)
+        P-->>A: Denied, no payment
+    end
     opt on-chain audit enabled
         P->>C: requestSpend(agent, vendor, amount)
     end
-    alt amount ≤ auto-approve
+    alt amount ≤ auto-approve and seller not high risk
         P-->>A: Authorized
-    else amount > auto-approve
-        P->>H: Approval request in UI
+    else over threshold or high-risk seller
+        P->>H: Approval request in UI (with risk reason)
         H->>P: Approve
     end
     P->>X: Agent wallet pays seller in USDC
@@ -153,10 +176,11 @@ For enterprises that want their auditor to verify the trail independently, the g
 
 | Network | AgentSpendPolicy | Token | Source verified |
 | --- | --- | --- | --- |
+| **Monad Testnet** (10143) | [`0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c`](https://testnet.monadexplorer.com/address/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c) | USDC `0x534b2f3A21130d7a60830c2Df862319e593943A3` | ✅ [Sourcify exact match](https://repo.sourcify.dev/10143/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c) |
 | **Arbitrum Sepolia** (421614) | [`0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c`](https://sepolia.arbiscan.io/address/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c) | USDC `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d` | ✅ [Sourcify exact match](https://repo.sourcify.dev/421614/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c) |
 | **Robinhood Chain testnet** (46630) | [`0x7F67212561DcD231a9316a54A4A336F7059A4234`](https://explorer.testnet.chain.robinhood.com/address/0x7F67212561DcD231a9316a54A4A336F7059A4234#code) | MockUSDC [`0x542A…0e1c`](https://explorer.testnet.chain.robinhood.com/address/0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c#code) | ✅ Blockscout |
 
-ERC-8004 registries (Arbitrum Sepolia): Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`.
+ERC-8004 registries (same address on Monad testnet and Arbitrum Sepolia): Identity `0x8004A818BFB912233c491871b3d84c89A494BD9e`, Reputation `0x8004B663056A597Dffe9eCcC1965A193B7388713`.
 
 Deployment records: [`contracts/deployments/`](contracts/deployments/).
 
@@ -167,12 +191,14 @@ Deployment records: [`contracts/deployments/`](contracts/deployments/).
 cd contracts
 npm install
 npm test                          # 16 tests: binding, limits, approvals, kill switches, settlement
+npm run deploy:monad-testnet      # needs DEPLOYER_PRIVATE_KEY with Monad testnet MON
+npm run verify:sourcify -- monadTestnet
 npm run deploy:arbitrum-sepolia   # needs DEPLOYER_PRIVATE_KEY with Arbitrum Sepolia ETH
 npm run deploy:robinhood-testnet
 npm run export-abi                # refresh server/src/chain/spend-policy-abi.ts
 ```
 
-Server integration smoke test against any RPC (local Hardhat node or Arbitrum Sepolia):
+Server integration smoke test against any RPC (local Hardhat node or Monad testnet):
 
 ```bash
 SPEND_POLICY_ADDRESS=0x... SPEND_POLICY_ADMIN_PRIVATE_KEY=0x... npx tsx server/scripts/smoke-spend-policy.ts
@@ -205,6 +231,13 @@ Open [http://localhost:5173](http://localhost:5173). The landing page is at [`/h
 
 All variables live in **one root `.env`** file. Vite reads `VITE_*` keys via `envDir: '..'` in `client/vite.config.ts`, and the server loads the same file from the repo root.
 
+Optional keys for the seller risk check:
+
+| Variable | What it enables |
+| --- | --- |
+| `ALCHEMY_API_KEY` | Alchemy's Monad RPC for the server and Hardhat (the public RPC stays as a fallback), plus the seller's payment history (Transfers API) used to spot brand-new wallets. Without it the check is skipped and never blocks a payment. Enable **Monad Testnet** on your Alchemy app. |
+| `NANSEN_ENABLED`, `NANSEN_API_KEY` | Off by default. When `NANSEN_ENABLED=true`, Nansen wallet labels are added to the check and flagged sellers are denied. Each lookup costs Nansen credits. |
+
 ## 🎬 Demo flows
 
 Micro-payments default to **$0.01 USDC** (`DEMO_TRANSACTION_FEE_USD` in `.env`). Re-seed after pricing changes: `npm run db:seed`.
@@ -214,6 +247,10 @@ Micro-payments default to **$0.01 USDC** (`DEMO_TRANSACTION_FEE_USD` in `.env`).
 | 1 | ✅ **Auto-approve + negotiate** | Research Agent | "Buy premium sector research data": seller quotes $0.02, agent counters $0.01, settles instantly |
 | 2 | ⚡ **Instant micro-pay** | Procurement Agent | "Order office supplies": $0.01, under the limit, no approval needed |
 | 3 | 🙋 **Human approval** | Cloud Ops Agent | "Pay AWS invoice": negotiates to $0.08, exceeds the $0.05 auto-approve limit, approve in UI |
+| 4 | 🔎 **Seller screened, passes** | Any flow above | The feed shows a "Seller risk check" step with the seller's payment history on Monad before payment |
+| 5 | 🆕 **Unknown seller needs a human** | Research Agent | "Buy a sales leads contact list": FreshLeads' wallet has no payment history, so the $0.01 payment waits in Approvals with "Why this needs approval" |
+
+Flows 4 and 5 need `ALCHEMY_API_KEY`. The FreshLeads seller is added by `npm run db:seed`.
 
 <details>
 <summary><b>🤖 Optional: Hermes background runtime</b></summary>
@@ -253,8 +290,9 @@ See `docs/hermes-mcp.example.json` for a manual MCP reference (AgntPymt auto-wri
 
 - [x] Self-hosted gateway with auto-approve, 24h caps, org ceiling, kill switch and human approvals
 - [x] MCP server so any MCP-capable agent can pay through the gateway
-- [x] x402 USDC settlement and ERC-8004 identity and reputation on Arbitrum
-- [x] Optional on-chain audit anchor (`AgentSpendPolicy`, 16 Hardhat tests), verified on Arbitrum Sepolia and Robinhood Chain testnet
+- [x] x402 USDC settlement and ERC-8004 identity and reputation on Monad testnet (also Arbitrum and Base Sepolia)
+- [x] Optional on-chain audit anchor (`AgentSpendPolicy`, 16 Hardhat tests), on Monad testnet; verified on Arbitrum Sepolia and Robinhood Chain testnet
+- [x] Seller risk screening before every payment (Alchemy on-chain history; Nansen labels optional)
 - [ ] One-prompt onboarding: paste a prompt into your agent and it connects itself to AgntPymt
 - [ ] Vendor allowlists, tool allowlists, and payment-count limits per day, week and month
 - [ ] Invoice capture, entered by a human or generated by the agent
@@ -262,12 +300,18 @@ See `docs/hermes-mcp.example.json` for a manual MCP reference (AgntPymt auto-wri
 - [ ] More stablecoin rails: additional EVM chains and XRPL
 - [ ] Merchant side: let sellers accept governed agent payments
 
+## 🧱 Built with
+
+- **[Monad](https://monad.xyz)**: USDC settlement over x402 through Monad's facilitator, ERC-8004 identity and reputation, and the `AgentSpendPolicy` audit anchor, all on Monad testnet.
+- **[Alchemy](https://alchemy.com)**: Monad RPC for the gateway and contracts, and the Transfers API for a seller's payment history, so brand-new wallets are sent to a human.
+- **[Nansen](https://nansen.ai)** (optional, `NANSEN_ENABLED=true`): wallet labels for every seller. A flagged label (exploiter, scam, sanctioned) denies the payment; a known entity lets it through under normal limits.
+
 ---
 
 <div align="center">
 
 **Your agents are moving fast. Your controls should too.**
 
-Started at the Arbitrum Open House Singapore Buildathon. Submitted to Colosseum's Crypto World's Fair.
+Started at the Arbitrum Open House Singapore Buildathon. Submitted to Colosseum's Crypto World's Fair. Ported to Monad for the Metropolis hackathon.
 
 </div>

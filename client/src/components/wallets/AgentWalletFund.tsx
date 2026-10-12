@@ -10,6 +10,7 @@ import { parseEther, parseUnits } from "viem";
 import { api } from "../../lib/api";
 import { erc20Abi } from "../../lib/erc20";
 import { TARGET_CHAIN, USDC_ADDRESS } from "../../lib/wagmi";
+import { ACTIVE_CHAIN, DISPLAY_CHAIN } from "../../lib/chains";
 
 type Props = {
   agentId: string;
@@ -18,7 +19,7 @@ type Props = {
   onFunded: () => void;
 };
 
-const DEFAULT_ETH = "0.001";
+const DEFAULT_ETH = ACTIVE_CHAIN.defaultGasFund;
 
 function walletErrorText(err: Error): string {
   const e = err as Error & { shortMessage?: string; details?: string };
@@ -149,7 +150,7 @@ export function AgentWalletFund({ agentId, walletAddress, treasuryAddress, onFun
           type="number"
           min="0"
           step="0.0001"
-          placeholder="ETH"
+          placeholder={DISPLAY_CHAIN.gasToken}
           value={ethAmount}
           onChange={(e) => setEthAmount(e.target.value)}
           disabled={ethBusy}
@@ -161,7 +162,7 @@ export function AgentWalletFund({ agentId, walletAddress, treasuryAddress, onFun
           onClick={() => fundEth()}
           className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          {ethBusy ? "…" : "ETH gas"}
+          {ethBusy ? "…" : `${DISPLAY_CHAIN.gasToken} gas`}
         </button>
       </div>
 

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { api, type Agent, type Approval } from "../../lib/api";
+import { RiskBadge, isRiskTier } from "./RiskBadge";
 
 type Props = {
   approvals: Approval[];
@@ -60,8 +61,19 @@ export function PendingApprovals({ approvals, agents, onUpdate }: Props) {
                   </span>
                 )}
               </div>
-              <div className="mb-1 text-sm text-accent-cyan">{a.vendorName}</div>
+              <div className="mb-1 flex items-center gap-2 text-sm text-accent-cyan">
+                {a.vendorName}
+                {isRiskTier(a.riskTier) && <RiskBadge tier={a.riskTier} />}
+              </div>
               <p className="mb-2 text-sm text-slate-600">{a.reason}</p>
+              {a.riskSummary &&
+                (a.riskTier === "high" ? (
+                  <p className="mb-2 rounded-lg bg-orange-50 px-2 py-1.5 text-xs text-orange-900">
+                    <span className="font-semibold">Why this needs approval:</span> {a.riskSummary}
+                  </p>
+                ) : (
+                  <p className="mb-2 text-xs text-slate-500">Seller check: {a.riskSummary}</p>
+                ))}
               <div className="mb-3 text-xs text-slate-400">{timeAgo(a.requestedAt)}</div>
               <div className="flex flex-wrap gap-2">
                 {hermes && a.runId && (

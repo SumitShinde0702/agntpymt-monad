@@ -17,6 +17,7 @@ import {
   Minus,
   Plug,
   Scale,
+  ScanSearch,
   Shield,
   ShieldAlert,
   Terminal,
@@ -40,8 +41,8 @@ const traction = [
   },
   {
     icon: BadgeCheck,
-    value: "3 chains live",
-    label: "Deployed on Arbitrum Sepolia, Robinhood Chain testnet, and Base Sepolia.",
+    value: "Live on Monad",
+    label: "USDC settlement, agent identity, and the audit contract, all on Monad testnet.",
   },
   {
     icon: Plug,
@@ -135,19 +136,25 @@ const pillars = [
     icon: FileText,
     title: "Regulator-grade audit trail",
     description:
-      "Every authorize, approve, settle, and reject decision is logged with its settlement hash, and can be anchored on Arbitrum for independent verification.",
+      "Every authorize, approve, settle, and reject decision is logged with its settlement hash, and can be anchored on Monad for independent verification.",
   },
   {
     icon: Zap,
     title: "Rail-agnostic settlement",
     description:
-      "x402 micropayments in USDC on Arbitrum today, with more EVM chains and XRPL next. The control plane stays the same as rails expand.",
+      "x402 micropayments in USDC on Monad today, with more EVM chains and XRPL next. The control plane stays the same as rails expand.",
   },
   {
     icon: Building2,
     title: "Runs on your servers",
     description:
       "Deploy the gateway in your own cloud or data centre. Agent keys stay with you, and AgntPymt never holds or moves your funds.",
+  },
+  {
+    icon: ScanSearch,
+    title: "Know who you're paying",
+    description:
+      "Every seller's wallet is screened against its payment history on Monad before money moves. Brand-new wallets wait for a human, with the reason shown on the approval.",
   },
 ];
 
@@ -157,12 +164,16 @@ const controlSteps = [
     detail: "An agent proposes a purchase over MCP — an API call, a dataset, or a vendor invoice.",
   },
   {
+    title: "Seller screened",
+    detail: "The seller's on-chain payment history is checked. Unknown wallets go to a human.",
+  },
+  {
     title: "Policy decides",
     detail: "The gateway checks identity, spend caps, the kill switch, and whether a human must approve.",
   },
   {
     title: "Settle and log",
-    detail: "The payment clears in USDC and the decision is written to the audit trail, optionally anchored on Arbitrum.",
+    detail: "The payment clears in USDC and the decision is written to the audit trail, optionally anchored on Monad.",
   },
 ];
 
@@ -182,9 +193,31 @@ const demoFlows = [
     agent: "Cloud Ops Agent",
     detail: "AWS invoice negotiated to $0.08 — exceeds $0.05 limit → routed for approval.",
   },
+  {
+    title: "Unknown seller",
+    agent: "Research Agent",
+    detail: "Buys a $0.01 leads list from a brand-new wallet with no payment history → routed for approval with the reason shown.",
+  },
 ];
 
+/** AgentSpendPolicy on Monad testnet — set from contracts/deployments/monadTestnet.json after deploying. */
+const MONAD_SPEND_POLICY_ADDRESS: string = "0x542A4322762b255f8bA53F6A236B6191c8Cd0e1c";
+
 const deployments = [
+  ...(MONAD_SPEND_POLICY_ADDRESS
+    ? [
+        {
+          chain: "Monad Testnet",
+          chainId: 10143,
+          address: MONAD_SPEND_POLICY_ADDRESS,
+          explorerLabel: "Monad Explorer",
+          explorerHref: `https://testnet.monadexplorer.com/address/${MONAD_SPEND_POLICY_ADDRESS}`,
+          verifiedLabel: "Sourcify",
+          verifiedHref: `https://repo.sourcify.dev/10143/${MONAD_SPEND_POLICY_ADDRESS}`,
+          footnote: "Settles in USDC 0x534b2f3A21130d7a60830c2Df862319e593943A3 via Monad's x402 facilitator",
+        },
+      ]
+    : []),
   {
     chain: "Arbitrum Sepolia",
     chainId: 421614,
@@ -243,7 +276,7 @@ const marketTiles = [
 ];
 
 const roadmap = [
-  { year: "Today", title: "Pilot governance", detail: "Run the self-hosted gateway with design partners, settling USDC on Arbitrum." },
+  { year: "Today", title: "Pilot governance", detail: "Run the self-hosted gateway with design partners, settling USDC on Monad." },
   { year: "2027", title: "Enterprise standard", detail: "The control layer every regulated org requires before production agents." },
   { year: "2030", title: "Default M2M rail", detail: "The Visa moment for machine-to-machine payments — built for enterprises first." },
 ];
@@ -310,7 +343,7 @@ const moats = [
   {
     icon: Layers,
     title: "Rail-agnostic control plane",
-    detail: "x402 and USDC on Arbitrum today, more EVM chains and XRPL next. The same governance layer as settlement rails change.",
+    detail: "x402 and USDC on Monad today, more EVM chains and XRPL next. The same governance layer as settlement rails change.",
   },
   {
     icon: Scale,
@@ -488,11 +521,11 @@ export function LandingPage() {
               </li>
               <li>
                 <a
-                  href="#live-on-arbitrum"
+                  href="#live-on-monad"
                   className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1.5 text-brand-100 transition duration-200 hover:border-brand-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
                 >
                   <GitBranch className="h-4 w-4" aria-hidden />
-                  Settles on Arbitrum
+                  Settles on Monad
                 </a>
               </li>
             </ul>
@@ -587,10 +620,12 @@ export function LandingPage() {
               procurement, IT spend, or digital-service consumption goes live.
             </p>
             <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {pillars.map(({ icon: Icon, title, description }) => (
+              {pillars.map(({ icon: Icon, title, description }, i) => (
                 <div
                   key={title}
-                  className="rounded-2xl border border-white/10 bg-slate-900 p-6 transition duration-200 hover:border-brand-500/30"
+                  className={`rounded-2xl border border-white/10 bg-slate-900 p-6 transition duration-200 hover:border-brand-500/30 ${
+                    i === pillars.length - 1 && pillars.length % 3 === 1 ? "lg:col-span-3" : ""
+                  } ${i === pillars.length - 1 && pillars.length % 2 === 1 ? "sm:col-span-2" : ""}`}
                 >
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500/20 text-brand-400">
                     <Icon className="h-5 w-5" aria-hidden />
@@ -642,7 +677,7 @@ export function LandingPage() {
             <h2 className="mt-3 text-center text-3xl font-bold tracking-tight sm:text-4xl">
               Request. Govern. Settle.
             </h2>
-            <ol className="mt-14 grid gap-6 sm:grid-cols-3">
+            <ol className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {controlSteps.map((step, i) => (
                 <li key={step.title} className="rounded-2xl border border-white/10 bg-slate-900/80 p-6">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/20 text-sm font-bold text-brand-400">
@@ -683,20 +718,24 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section id="live-on-arbitrum" className="border-t border-white/10 px-6 py-24 scroll-mt-24">
+        <section id="live-on-monad" className="border-t border-white/10 px-6 py-24 scroll-mt-24">
           <div className="mx-auto max-w-6xl">
             <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-brand-400">
-              Live on Arbitrum
+              Live on Monad
             </p>
             <h2 className="mt-3 text-center text-3xl font-bold tracking-tight sm:text-4xl">
               Not a mockup. Deployed and verified.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-slate-400">
-              Agent payments settle in USDC on Arbitrum. For enterprises that want an independent
-              audit trail, the gateway mirrors every decision to AgentSpendPolicy, live and
-              source-verified on two Arbitrum chains.
+              Agent payments settle in USDC on Monad through x402. For enterprises that want an
+              independent audit trail, the gateway mirrors every decision to AgentSpendPolicy, live
+              and source-verified on Monad testnet.
             </p>
-            <div className="mt-14 grid gap-6 lg:grid-cols-2">
+            <p className="mt-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Powered by <span className="text-slate-300">Monad</span> ·{" "}
+              <span className="text-slate-300">Alchemy</span>
+            </p>
+            <div className={`mt-14 grid gap-6 ${deployments.length > 2 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
               {deployments.map((d) => (
                 <article key={d.address} className="rounded-2xl border border-white/10 bg-slate-900 p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">

@@ -111,6 +111,8 @@ export const approvals = pgTable("approvals", {
   kind: text("kind").notNull().default("payment"),
   hermesRunId: text("hermes_run_id"),
   toolName: text("tool_name"),
+  riskTier: text("risk_tier"),
+  riskSummary: text("risk_summary"),
   requestedAt: text("requested_at").notNull(),
   resolvedAt: text("resolved_at"),
 });

@@ -6,10 +6,11 @@ import { logAudit } from "../services/audit.js";
 import { matchVendor, buildFulfillment } from "./vendor-matcher.js";
 import { formatUsdc } from "./pricing.js";
 import { settleViaX402 } from "../chain/x402.js";
-import { SETTLEMENT_CHAIN_NAME, txExplorerUrl } from "../chain/network.js";
+import { SETTLEMENT_CHAIN_NAME, SETTLEMENT_GAS_SYMBOL, txExplorerUrl } from "../chain/network.js";
 import { generateNegotiationMessage, type TranscriptLine } from "../services/negotiation-ai.js";
 import { recordBuyerRatesSeller } from "../services/erc8004.js";
 import { getOrgSettings } from "../services/org-settings.js";
+import { assessSellerRisk, type SellerRiskAssessment } from "../services/seller-risk.js";
 import {
   approveOnchain,
   authorizeOnchain,
@@ -331,6 +332,41 @@ export async function runPurchaseFlow(params: PurchaseParams) {
     );
   }
 
+  const sellerAddress = vendor.walletAddress || env.evmPayToAddress;
+  let risk: SellerRiskAssessment | null = null;
+  if (sellerAddress) {
+    risk = await assessSellerRisk(sellerAddress);
+    await logAudit({
+      runId: params.runId,
+      agentId: params.agentId,
+      step: "risk_checked",
+      message: risk.summary,
+      actor: risk.sources.nansen === "ok" ? "Nansen + Alchemy" : "Alchemy",
+      payload: { ...risk },
+      source: params.source,
+    });
+
+    if (risk.tier === "blocked") {
+      await logAudit({
+        runId: params.runId,
+        agentId: params.agentId,
+        step: "risk_denied",
+        message: `Denied — seller ${vendor.name} is flagged by Nansen (${risk.flaggedLabels.join(", ")}). No payment was made.`,
+        actor: "AgntPymt Policy Engine",
+        payload: { sellerAddress, flaggedLabels: risk.flaggedLabels },
+        source: params.source,
+      });
+      await db
+        .update(schema.sellerSessions)
+        .set({ quotedPriceUsd: vendor.listPriceUsd, finalPriceUsd: finalPrice, status: "denied" })
+        .where(eq(schema.sellerSessions.id, sessionId));
+      throw new PolicyDeniedError(
+        `Seller ${vendor.name} (${sellerAddress}) is flagged by Nansen: ${risk.flaggedLabels.join(", ")}`
+      );
+    }
+  }
+  const riskHigh = risk?.tier === "high";
+
   const onchain = await authorizeOnchain({
     runId: params.runId,
     agentId: params.agentId,
@@ -356,10 +392,13 @@ export async function runPurchaseFlow(params: PurchaseParams) {
 
   const onchainPending = onchain.kind === "pending";
 
-  if (overAutoApprove || overDailyCap || onchainPending) {
+  if (overAutoApprove || overDailyCap || onchainPending || riskHigh) {
     const approvalId = nanoid();
     const reasonParts: string[] = [];
-    if (onchainPending && !overAutoApprove && !overDailyCap) {
+    if (riskHigh) {
+      reasonParts.push(`seller risk HIGH (${risk?.inboundTransfers ?? 0} prior payments on Monad)`);
+    }
+    if (onchainPending && !overAutoApprove && !overDailyCap && !riskHigh) {
       reasonParts.push("requires on-chain admin approval");
     }
     if (overAutoApprove) {
@@ -383,6 +422,8 @@ export async function runPurchaseFlow(params: PurchaseParams) {
       amountUsd: finalPrice,
       reason: params.purchaseIntent,
       status: "pending_approval",
+      riskTier: risk?.tier ?? null,
+      riskSummary: risk?.summary ?? null,
       requestedAt: new Date().toISOString(),
       resolvedAt: null,
     });
@@ -398,7 +439,14 @@ export async function runPurchaseFlow(params: PurchaseParams) {
       step: "payment_pending",
       message: `Requires human approval — ${formatUsdc(finalPrice)} ${reasonParts.join("; ")}. Approve here or in Approvals.`,
       actor: "AgntPymt",
-      payload: { approvalId, overAutoApprove, overDailyCap, dailySpendUsd, dailyCap },
+      payload: {
+        approvalId,
+        overAutoApprove,
+        overDailyCap,
+        dailySpendUsd,
+        dailyCap,
+        riskTier: risk?.tier ?? null,
+      },
       source: params.source,
     });
 
@@ -508,10 +556,11 @@ export async function settlePurchase(params: {
       const reason = err instanceof Error ? err.message : "x402 settlement failed";
       const hint = reason.includes("Insufficient USDC")
         ? ` Fund the agent wallet with ${SETTLEMENT_CHAIN_NAME} USDC on the Wallets page.`
-        : reason.includes(`${SETTLEMENT_CHAIN_NAME} ETH`) || reason.includes("needs testnet ETH")
-        ? ` Fund ETH gas on the Wallets page (${SETTLEMENT_CHAIN_NAME} faucet → treasury → agent ETH gas).`
+        : reason.includes(`${SETTLEMENT_CHAIN_NAME} ${SETTLEMENT_GAS_SYMBOL}`) ||
+            reason.includes(`needs testnet ${SETTLEMENT_GAS_SYMBOL}`)
+        ? ` Fund ${SETTLEMENT_GAS_SYMBOL} gas on the Wallets page (${SETTLEMENT_CHAIN_NAME} faucet → treasury → agent ${SETTLEMENT_GAS_SYMBOL} gas).`
         : reason.includes("(402)")
-          ? " Open Wallets → fund the running agent with more USDC + ETH, then retry."
+          ? ` Open Wallets → fund the running agent with more USDC + ${SETTLEMENT_GAS_SYMBOL}, then retry.`
           : reason.includes("not registered")
           ? " If using facilitator.openx402.ai, register EVM_PAY_TO_ADDRESS at https://openx402.ai/register."
           : "";

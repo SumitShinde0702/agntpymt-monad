@@ -70,7 +70,7 @@ export function WalletsPage() {
         <h2 className="mb-1 font-semibold">Fund your treasury first</h2>
         <p className="mb-3 text-xs text-slate-500">
           Use free {DISPLAY_CHAIN.name} test funds only — never mainnet funds. After the faucet, use{" "}
-          <strong>ETH gas</strong> / <strong>USDC</strong> on each agent row.
+          <strong>{DISPLAY_CHAIN.gasToken} gas</strong> / <strong>USDC</strong> on each agent row.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {FAUCETS.map((f) => (

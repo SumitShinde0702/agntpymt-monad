@@ -14,7 +14,7 @@
     "build": "npm run build -w db && npm run build -w server && npm run build -w client",
     "docker:build": "docker build -t agntpymt:local .",
     "docker:run": "docker run --rm -p 8080:8080 -e DATABASE_URL=postgresql://host.docker.internal:5432/agntpymt -e POSTGRES_HOST=host.docker.internal -e SIMULATE_PAYMENTS=true agntpymt:local",
-    "db:up": "docker compose -f deploy/docker/docker-compose.postgres.yml up -d",
+    "db:up": "docker compose --env-file .env -f deploy/docker/docker-compose.postgres.yml up -d",
     "db:down": "docker compose -f deploy/docker/docker-compose.postgres.yml down",
     "db:ensure": "npm run ensure -w db",
     "start:prod": "npm run db:migrate && npm run db:seed && npm run start -w server",

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Bot, Play, Plus } from "lucide-react";
 import { api, subscribeRunEvents, type Agent, type RunEvent } from "../../lib/api";
 import { RunChatFeed, RUN_IDLE_TIMEOUT_MS } from "./RunChatFeed";
+import { DISPLAY_CHAIN } from "../../lib/chains";
 
 const EXAMPLES = [
   "Buy premium sector research data",
@@ -100,6 +101,7 @@ export function AgentConsole({ agents, onRunComplete, onNewAgent }: Props) {
       event.step === "payment_failed" ||
       event.step === "payment_denied" ||
       event.step === "policy_denied" ||
+      event.step === "risk_denied" ||
       event.step === "hermes_approval_denied"
     ) {
       ctx.finish();
@@ -315,7 +317,7 @@ export function AgentConsole({ agents, onRunComplete, onNewAgent }: Props) {
           <Link to="/agents" className="link-primary">
             Set rules per agent
           </Link>{" "}
-          · fund USDC + ETH on Wallets first.
+          · fund USDC + {DISPLAY_CHAIN.gasToken} on Wallets first.
         </p>
       </div>
 

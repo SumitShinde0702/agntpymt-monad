@@ -59,20 +59,27 @@ const VENDOR_ROWS = [
     counterPriceUsd: null,
     negotiationStyle: "instant",
   },
+  // Seller risk demo: a fresh wallet with no payment history, so purchases need human approval.
+  {
+    id: "vendor_freshleads",
+    name: "FreshLeads Data Agent",
+    category: "leads",
+    description: "Sales leads and contact lists from a brand-new seller wallet",
+    listPriceUsd: 0.01,
+    counterPriceUsd: null,
+    negotiationStyle: "instant",
+    walletAddress: "0x2cf348AdCEE045230cF88Fe9035d905E83c95fA7",
+  },
 ] as const;
 
 async function ensureVendors(db: ReturnType<typeof getDb>) {
-  await db.insert(schema.vendors).values([...VENDOR_ROWS]);
+  await db.insert(schema.vendors).values([...VENDOR_ROWS]).onConflictDoNothing();
 }
 
 async function seed() {
   const db = getDb();
 
-  const existingVendors = await db.select({ id: schema.vendors.id }).from(schema.vendors).limit(1);
-  if (existingVendors.length === 0) {
-    await ensureVendors(db);
-    console.log("Seeded vendors (were missing).");
-  }
+  await ensureVendors(db);
 
   const existing = await db
     .select({ id: schema.organizations.id })
