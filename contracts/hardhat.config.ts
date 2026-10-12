@@ -19,7 +19,11 @@ const config: HardhatUserConfig = {
       chainId: Number(process.env.HARDHAT_CHAIN_ID || 31337),
     },
     monadTestnet: {
-      url: process.env.MONAD_TESTNET_RPC_URL || "https://testnet-rpc.monad.xyz",
+      url:
+        process.env.MONAD_TESTNET_RPC_URL ||
+        (process.env.ALCHEMY_API_KEY
+          ? `https://monad-testnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+          : "https://testnet-rpc.monad.xyz"),
       chainId: 10143,
       accounts,
     },
